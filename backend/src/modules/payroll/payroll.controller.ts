@@ -7,10 +7,17 @@ import { Role } from "../../common/roles.enum";
 import { CurrentUser, AuthenticatedUser } from "../../common/decorators/current-user.decorator";
 import { assertSelfOrElevated } from "../../common/utils/access.util";
 
+// Header names must match getDisbursementFileRows' actual object keys exactly — the empty
+// case previously hardcoded a snake_case header while non-empty rows produced camelCase
+// (Object.keys of the real row), so the file's header row silently changed shape depending
+// on whether any payroll was finalized yet. Any downstream tooling parsing by column name
+// would have broken the moment the first month with data appeared.
+const DISBURSEMENT_COLUMNS = ["employeeCode", "employeeName", "netPay", "month", "year"] as const;
+
 function toCsv(rows: Array<Record<string, string | number>>): string {
-  if (rows.length === 0) return "employee_code,employee_name,net_pay,month,year\n";
-  const header = Object.keys(rows[0]).join(",");
-  const lines = rows.map((r) => Object.values(r).join(","));
+  if (rows.length === 0) return `${DISBURSEMENT_COLUMNS.join(",")}\n`;
+  const header = DISBURSEMENT_COLUMNS.join(",");
+  const lines = rows.map((r) => DISBURSEMENT_COLUMNS.map((c) => r[c]).join(","));
   return [header, ...lines].join("\n");
 }
 

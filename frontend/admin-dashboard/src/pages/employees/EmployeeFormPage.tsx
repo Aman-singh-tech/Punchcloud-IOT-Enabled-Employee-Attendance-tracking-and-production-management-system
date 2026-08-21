@@ -148,7 +148,13 @@ export function EmployeeFormPage() {
           name: values.name,
           designation: values.designation,
           deviceEnrollmentId: values.deviceEnrollmentId,
-          dateOfJoining: values.dateOfJoining,
+          // An untouched optional date input reports "" (not undefined) from RHF. The
+          // backend's @IsOptional() only treats undefined/null as "not provided" — an empty
+          // string still hits @IsDateString() and fails validation, so leaving this field
+          // blank silently blocked every "New Employee" save with no visible reason (found
+          // live 2026-08-21: POST /employees 400'd with "dateOfJoining must be a valid ISO
+          // 8601 date string" while the UI showed nothing).
+          dateOfJoining: values.dateOfJoining || undefined,
           shiftId: values.shiftId,
           salaryStructure,
         });
