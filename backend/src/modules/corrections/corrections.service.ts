@@ -109,7 +109,7 @@ export class CorrectionsService {
         request.employeeId,
         "correction_resolved",
         `Your correction request was ${dto.status}${dto.resolutionNote ? `: ${dto.resolutionNote}` : ""}`,
-        "/corrections",
+        "/corrections/status",
       );
     }
 

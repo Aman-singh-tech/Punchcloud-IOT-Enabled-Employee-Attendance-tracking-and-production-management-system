@@ -87,7 +87,7 @@ export class LeaveService {
         leaveRequest.employeeId!,
         "leave_rejected",
         `Your leave request (${leaveRequest.fromDate.toISOString().slice(0, 10)} to ${leaveRequest.toDate.toISOString().slice(0, 10)}) was rejected`,
-        "/leave",
+        "/leave/requests",
       );
       return updated;
     }
@@ -147,7 +147,7 @@ export class LeaveService {
       leaveRequest.employeeId!,
       "leave_approved",
       `Your leave request (${leaveRequest.fromDate.toISOString().slice(0, 10)} to ${leaveRequest.toDate.toISOString().slice(0, 10)}) was approved`,
-      "/leave",
+      "/leave/requests",
     );
     return approved;
   }
