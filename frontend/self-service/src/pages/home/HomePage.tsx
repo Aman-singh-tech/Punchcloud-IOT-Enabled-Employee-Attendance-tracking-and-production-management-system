@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth, employeeApi, AttendanceDaily } from "@punchcloud/shared";
-import { CalendarPlus, MessageSquareWarning, ChevronRight } from "lucide-react";
+import { CalendarPlus, ChevronRight } from "lucide-react";
 import { useMyAttendance } from "../../features/attendance/useMyAttendance";
 import { useMyProduction } from "../../features/production/useMyProduction";
 import { TodayStatusCard } from "../../components/TodayStatusCard";
@@ -39,32 +39,18 @@ export function HomePage() {
 
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Quick actions</p>
-        <div className="grid grid-cols-2 gap-3">
-          <Link
-            to="/leave/apply"
-            className="group flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-light text-primary">
-              <CalendarPlus className="h-5 w-5" />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-slate-800">Apply for Leave</span>
-              <ChevronRight className="h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5" />
-            </div>
-          </Link>
-          <Link
-            to="/corrections/raise"
-            className="group flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-              <MessageSquareWarning className="h-5 w-5" />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-slate-800">Raise Correction</span>
-              <ChevronRight className="h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5" />
-            </div>
-          </Link>
-        </div>
+        <Link
+          to="/leave/apply"
+          className="group flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-md"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-light text-primary">
+            <CalendarPlus className="h-5 w-5" />
+          </div>
+          <div className="flex flex-1 items-center justify-between">
+            <span className="text-sm font-semibold text-slate-800">Apply for Leave</span>
+            <ChevronRight className="h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5" />
+          </div>
+        </Link>
       </div>
     </div>
   );

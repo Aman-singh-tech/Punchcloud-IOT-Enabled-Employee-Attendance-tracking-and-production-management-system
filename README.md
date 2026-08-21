@@ -62,16 +62,32 @@ company scales past a handful of people. Both frontends poll `GET /notifications
 |---|---|
 | Leave request submitted | HR |
 | Leave approved / rejected | Employee |
-| Correction request raised | HR |
-| Correction resolved | Employee |
 | Payroll finalized (payslip ready) | Employee |
 
+(Correction-request notifications existed briefly but were removed 2026-08-21 along with the
+whole correction/dispute workflow — see "Removed features" below.)
+
 Backend: `modules/notifications/` (`Notification` model — `audience: "HR" \| "EMPLOYEE"`,
-optional `employeeId`). Triggered inline from `leave.service.ts`, `corrections.service.ts`,
-and `payroll.service.ts` at the exact point each event happens — there is no separate polling
-job. Frontend: `useNotifications`/`useUnreadNotificationCount`/`useNotificationActions` in
+optional `employeeId`). Triggered inline from `leave.service.ts` and `payroll.service.ts` at
+the exact point each event happens — there is no separate polling job. Frontend:
+`useNotifications`/`useUnreadNotificationCount`/`useNotificationActions` in
 `@punchcloud/shared`, rendered by each app's own `NotificationBell` (admin-dashboard: plain
 inline SVG bell; self-service: Lucide `Bell` icon, matching each app's existing style).
+
+## Removed features
+
+**Correction/dispute workflow (removed 2026-08-21).** The LLD's `correction_request`
+workflow — employee raises a missed-punch/wrong-attendance/production dispute, HR
+approves/rejects, an approved one patches the underlying attendance/production record — was
+built, then removed at the client's explicit decision: the punching hardware is new and not
+expected to fail, and a missed punch is treated as the employee's own responsibility, not
+something the system needs a dispute path for. Removed entirely: the `correction_request`
+table/model, `modules/corrections/` (controller/service/DTOs), the HR-side approval queue
+page, the self-service raise/status pages, and the `correction_raised`/`correction_resolved`
+notification types. `AuditService` and `PATCH /production/entries/:id` (HR directly editing a
+production entry) are unrelated and were kept — only the employee-raised dispute path is gone.
+If this ever needs to come back, it's a straightforward git revert of that commit rather than
+a rebuild.
 
 `S3Service` degrades to a logged no-op when AWS credentials aren't configured (so a missing
 bucket/credentials never crashes the request that triggered an archival write — punch/
@@ -341,5 +357,5 @@ recomputed, by design.
 - The golden path (login → punch → attendance appears → leave apply/approve → production
   entry → payroll generate → payslip visible) has been walked in both frontend apps against
   live data — but only for the two seeded demo employees and a handful of pages per app.
-  Give the rest of each app (settings pages, correction workflow, disbursement download,
-  PWA install) a pass before considering it launch-ready.
+  Give the rest of each app (settings pages, disbursement download, PWA install) a pass
+  before considering it launch-ready.

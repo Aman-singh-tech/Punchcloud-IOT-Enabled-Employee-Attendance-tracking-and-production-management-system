@@ -6,7 +6,6 @@ export * from "./api/attendanceApi";
 export * from "./api/leaveApi";
 export * from "./api/productionApi";
 export * from "./api/payrollApi";
-export * from "./api/correctionApi";
 export * from "./api/notificationsApi";
 
 export * from "./auth/AuthContext";

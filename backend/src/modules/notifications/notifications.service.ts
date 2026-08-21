@@ -5,8 +5,6 @@ export type NotificationType =
   | "leave_requested"
   | "leave_approved"
   | "leave_rejected"
-  | "correction_raised"
-  | "correction_resolved"
   | "payslip_ready";
 
 // In-app bell (client-requested 2026-08-21, chosen over email — no SES sandbox/verification

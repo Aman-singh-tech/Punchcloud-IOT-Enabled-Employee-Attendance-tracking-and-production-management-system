@@ -8,7 +8,6 @@ import { EmployeeDetailPage } from "../pages/employees/EmployeeDetailPage";
 import { EmployeeFormPage } from "../pages/employees/EmployeeFormPage";
 import { AttendanceReportPage } from "../pages/attendance/AttendanceReportPage";
 import { LateComersReportPage } from "../pages/attendance/LateComersReportPage";
-import { AttendanceCorrectionQueuePage } from "../pages/attendance/AttendanceCorrectionQueuePage";
 import { LeaveApprovalQueuePage } from "../pages/leave/LeaveApprovalQueuePage";
 import { ProductionEntryFormPage } from "../pages/production/ProductionEntryFormPage";
 import { ProductionReportPage } from "../pages/production/ProductionReportPage";
@@ -39,7 +38,6 @@ export function AppRoutes() {
 
         <Route path="/attendance" element={<AttendanceReportPage />} />
         <Route path="/attendance/late-comers" element={<LateComersReportPage />} />
-        <Route path="/attendance/corrections" element={<AttendanceCorrectionQueuePage />} />
 
         <Route path="/leave/approvals" element={<LeaveApprovalQueuePage />} />
 

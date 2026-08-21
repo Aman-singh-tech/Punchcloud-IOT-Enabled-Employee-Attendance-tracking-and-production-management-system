@@ -17,7 +17,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Employees", to: "/employees", roles: ["HR"] },
   { label: "Attendance", to: "/attendance", roles: ["HR"] },
   { label: "Late Comers", to: "/attendance/late-comers", roles: ["HR"] },
-  { label: "Corrections", to: "/attendance/corrections", roles: ["HR"] },
   { label: "Leave Approvals", to: "/leave/approvals", roles: ["HR"] },
   { label: "Production Entry", to: "/production/entry", roles: ["HR"] },
   { label: "Production Report", to: "/production/report", roles: ["HR"] },

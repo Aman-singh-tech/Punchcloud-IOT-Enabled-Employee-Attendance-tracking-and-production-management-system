@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth, employeeApi } from "@punchcloud/shared";
-import { Home, CalendarDays, Wallet, Package, CalendarCheck, FileWarning, LogOut, Fingerprint } from "lucide-react";
+import { Home, CalendarDays, Wallet, Package, CalendarCheck, LogOut, Fingerprint } from "lucide-react";
 import { NotificationBell } from "../components/NotificationBell";
 
 const NAV_ITEMS = [
@@ -9,7 +9,6 @@ const NAV_ITEMS = [
   { label: "Attendance", to: "/attendance", icon: CalendarDays },
   { label: "Leave", to: "/leave/requests", icon: CalendarCheck },
   { label: "Payslips", to: "/payslips", icon: Wallet },
-  { label: "Corrections", to: "/corrections/status", icon: FileWarning },
 ];
 
 export function EmployeeLayout() {
@@ -28,7 +27,7 @@ export function EmployeeLayout() {
   // fixed-salary employee's self-service view has no production tab at all
   // (frontend doc Section 5).
   const navItems = isPieceRate
-    ? [...NAV_ITEMS.slice(0, 4), { label: "Production", to: "/production", icon: Package }, NAV_ITEMS[4]]
+    ? [...NAV_ITEMS, { label: "Production", to: "/production", icon: Package }]
     : NAV_ITEMS;
 
   if (!user) return null;

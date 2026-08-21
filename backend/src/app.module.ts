@@ -10,7 +10,6 @@ import { AttendanceModule } from "./modules/attendance/attendance.module";
 import { ProductionModule } from "./modules/production/production.module";
 import { LeaveModule } from "./modules/leave/leave.module";
 import { PayrollModule } from "./modules/payroll/payroll.module";
-import { CorrectionsModule } from "./modules/corrections/corrections.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { JobsModule } from "./jobs/jobs.module";
@@ -27,7 +26,6 @@ import { JobsModule } from "./jobs/jobs.module";
     ProductionModule,
     LeaveModule,
     PayrollModule,
-    CorrectionsModule,
     DashboardModule,
     NotificationsModule,
     JobsModule,

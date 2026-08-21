@@ -10,8 +10,6 @@ import { MyLeaveRequestsPage } from "../pages/leave/MyLeaveRequestsPage";
 import { MyPayslipsPage } from "../pages/payslips/MyPayslipsPage";
 import { PayslipDetailPage } from "../pages/payslips/PayslipDetailPage";
 import { MyProductionPage } from "../pages/production/MyProductionPage";
-import { RaiseCorrectionPage } from "../pages/corrections/RaiseCorrectionPage";
-import { MyCorrectionsStatusPage } from "../pages/corrections/MyCorrectionsStatusPage";
 
 export function AppRoutes() {
   return (
@@ -33,8 +31,6 @@ export function AppRoutes() {
         <Route path="/payslips" element={<MyPayslipsPage />} />
         <Route path="/payslips/:month/:year" element={<PayslipDetailPage />} />
         <Route path="/production" element={<MyProductionPage />} />
-        <Route path="/corrections/raise" element={<RaiseCorrectionPage />} />
-        <Route path="/corrections/status" element={<MyCorrectionsStatusPage />} />
       </Route>
     </Routes>
   );
