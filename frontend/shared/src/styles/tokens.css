@@ -1,0 +1,14 @@
+:root {
+  --pc-color-primary: #2563eb;
+  --pc-color-primary-dark: #1d4ed8;
+  --pc-color-success: #16a34a;
+  --pc-color-danger: #dc2626;
+  --pc-color-warning: #d97706;
+  --pc-color-bg: #f9fafb;
+  --pc-color-surface: #ffffff;
+  --pc-color-border: #e5e7eb;
+  --pc-color-text: #111827;
+  --pc-color-text-muted: #6b7280;
+  --pc-radius-md: 0.5rem;
+  --pc-spacing-unit: 0.25rem;
+}

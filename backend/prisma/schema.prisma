@@ -1,0 +1,340 @@
+// PunchCloud database schema.
+// Mirrors punchcloud-low-level-design_FINAL.md Section 1 (DDL) table-for-table,
+// column-for-column, with these deliberate additions (see plan doc "Gaps"):
+//   - audit_log table (described in LLD Section 6, no DDL given there)
+//   - device.api_key_hash (LLD Section 6 requires per-device API keys, no column given)
+//   - salary_structure.monthly_base_salary_enc / per_record_rate_enc replace the
+//     plaintext NUMERIC columns (LLD Section 6: salary details encrypted at rest).
+//     Application-layer AES-256-GCM via SalaryStructureRepository; every other
+//     table matches the DDL's plaintext NUMERIC/VARCHAR/etc. types directly.
+//   - CHECK constraint enforcing employee_type IN ('piece_rate','fixed_salary')
+//     (Non-Negotiable Rule #1) is added via a raw SQL migration statement.
+// Table creation order here fixes the LLD's user_account-before-employee forward
+// reference; Prisma computes FK dependency order automatically regardless.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========== ORGANIZATION & ACCESS ==========
+
+model Location {
+  locationId Int     @id @default(autoincrement()) @map("location_id")
+  name       String  @db.VarChar(100)
+  state      String? @db.VarChar(50)
+  timezone   String? @default("Asia/Kolkata") @db.VarChar(50)
+
+  departments Department[]
+  employees   Employee[]
+  devices     Device[]
+  holidays    HolidayCalendar[]
+
+  @@map("location")
+}
+
+model Department {
+  departmentId Int       @id @default(autoincrement()) @map("department_id")
+  name         String    @db.VarChar(100)
+  locationId   Int?      @map("location_id")
+  location     Location? @relation(fields: [locationId], references: [locationId])
+
+  employees Employee[]
+
+  @@map("department")
+}
+
+model Role {
+  roleId Int    @id @default(autoincrement()) @map("role_id")
+  name   String @unique @db.VarChar(30) // Admin, HR, Supervisor, Employee, Finance
+
+  userAccounts UserAccount[]
+
+  @@map("role")
+}
+
+model UserAccount {
+  userId       Int       @id @default(autoincrement()) @map("user_id")
+  employeeId   Int?      @map("employee_id")
+  employee     Employee? @relation(fields: [employeeId], references: [employeeId])
+  email        String    @unique @db.VarChar(150)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  roleId       Int?      @map("role_id")
+  role         Role?     @relation(fields: [roleId], references: [roleId])
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  approvedLeaveRequests LeaveRequest[]      @relation("ApprovedBy")
+  submittedProduction   ProductionEntry[]   @relation("SubmittedBy")
+  resolvedCorrections   CorrectionRequest[] @relation("ResolvedBy")
+  auditLogEntries       AuditLog[]          @relation("ChangedBy")
+
+  @@map("user_account")
+}
+
+// ========== EMPLOYEE & SHIFT ==========
+
+model Shift {
+  shiftId            Int      @id @default(autoincrement()) @map("shift_id")
+  name               String?  @db.VarChar(50)
+  startTime          DateTime @map("start_time") @db.Time
+  endTime            DateTime @map("end_time") @db.Time
+  gracePeriodMinutes Int      @default(10) @map("grace_period_minutes")
+  standardHours      Decimal  @default(8.0) @map("standard_hours") @db.Decimal(4, 2)
+  weeklyOffDays      Int[]    @default([0]) @map("weekly_off_days") // 0=Sunday ... 6=Saturday
+
+  // Monthly late-comer policy (client-confirmed 2026-08-21). Arriving more than
+  // late_threshold_minutes after start_time marks the day late; the first
+  // late_days_allowed_per_month late days are forgiven, every one after that becomes a
+  // Half-day. Measured from start_time, NOT from the grace period above — grace_period
+  // only affects the reported late_minutes figure.
+  lateThresholdMinutes    Int @default(15) @map("late_threshold_minutes")
+  lateDaysAllowedPerMonth Int @default(4) @map("late_days_allowed_per_month")
+
+  employees Employee[]
+
+  @@map("shift")
+}
+
+model Employee {
+  employeeId         Int         @id @default(autoincrement()) @map("employee_id")
+  employeeCode       String      @unique @map("employee_code") @db.VarChar(20)
+  deviceEnrollmentId String?     @unique @map("device_enrollment_id") @db.VarChar(50)
+  name               String      @db.VarChar(150)
+  designation        String?     @db.VarChar(100)
+  departmentId       Int?        @map("department_id")
+  department         Department? @relation(fields: [departmentId], references: [departmentId])
+  locationId         Int?        @map("location_id")
+  location           Location?   @relation(fields: [locationId], references: [locationId])
+  shiftId            Int?        @map("shift_id")
+  shift              Shift?      @relation(fields: [shiftId], references: [shiftId])
+  dateOfJoining      DateTime?   @map("date_of_joining") @db.Date
+  status             String      @default("active") @db.VarChar(20) // active/inactive/terminated
+
+  userAccounts       UserAccount[]
+  salaryStructures   SalaryStructure[]
+  punchLogs          PunchLog[]
+  leaveBalances      LeaveBalance[]
+  leaveRequests      LeaveRequest[]
+  attendanceDaily    AttendanceDaily[]
+  productionEntries  ProductionEntry[]
+  payrollRecords     PayrollRecord[]
+  correctionRequests CorrectionRequest[]
+
+  @@map("employee")
+}
+
+// employee_type is one of exactly TWO values (final, confirmed) — no third/accountant-style type.
+// monthly_base_salary / per_record_rate are stored encrypted (see SalaryStructureRepository);
+// the *_enc columns hold AES-256-GCM ciphertext, never plaintext NUMERIC.
+model SalaryStructure {
+  salaryStructureId    Int       @id @default(autoincrement()) @map("salary_structure_id")
+  employeeId           Int?      @map("employee_id")
+  employee             Employee? @relation(fields: [employeeId], references: [employeeId])
+  employeeType         String    @map("employee_type") @db.VarChar(20) // 'piece_rate' | 'fixed_salary'
+  monthlyBaseSalaryEnc Bytes?    @map("monthly_base_salary_enc")
+  perRecordRateEnc     Bytes?    @map("per_record_rate_enc")
+  effectiveFrom        DateTime  @map("effective_from") @db.Date
+  effectiveTo          DateTime? @map("effective_to") @db.Date
+
+  @@map("salary_structure")
+}
+
+// ========== PUNCH & ATTENDANCE ==========
+
+model Device {
+  deviceId   Int       @id @default(autoincrement()) @map("device_id")
+  deviceName String?   @map("device_name") @db.VarChar(100)
+  locationId Int?      @map("location_id")
+  location   Location? @relation(fields: [locationId], references: [locationId])
+  ipAddress  String?   @map("ip_address") @db.VarChar(50)
+  lastSyncAt DateTime? @map("last_sync_at") @db.Timestamp(6)
+  apiKeyHash String?   @map("api_key_hash") @db.VarChar(255) // gap-fill: LLD 6 requires per-device API keys
+
+  punchLogs PunchLog[]
+
+  @@map("device")
+}
+
+model PunchLog {
+  punchId         BigInt    @id @default(autoincrement()) @map("punch_id")
+  employeeId      Int?      @map("employee_id")
+  employee        Employee? @relation(fields: [employeeId], references: [employeeId])
+  deviceId        Int?      @map("device_id")
+  device          Device?   @relation(fields: [deviceId], references: [deviceId])
+  punchTimestamp  DateTime  @map("punch_timestamp") @db.Timestamp(6)
+  direction       String?   @db.VarChar(3) // IN / OUT / NULL if device doesn't tag it
+  rawPayloadS3Key String?   @map("raw_payload_s3_key") @db.VarChar(300)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@unique([employeeId, punchTimestamp])
+  @@index([employeeId, punchTimestamp], map: "idx_punch_employee_date")
+  @@map("punch_log")
+}
+
+model HolidayCalendar {
+  holidayId   Int       @id @default(autoincrement()) @map("holiday_id")
+  holidayDate DateTime  @map("holiday_date") @db.Date
+  name        String?   @db.VarChar(100)
+  locationId  Int?      @map("location_id") // NULL = applies to all locations
+  location    Location? @relation(fields: [locationId], references: [locationId])
+
+  @@map("holiday_calendar")
+}
+
+model LeaveType {
+  leaveTypeId Int     @id @default(autoincrement()) @map("leave_type_id")
+  name        String? @unique @db.VarChar(30) // Paid, Sick, Casual, Comp-off, Unpaid
+  isPaid      Boolean @default(true) @map("is_paid")
+  annualQuota Int     @default(0) @map("annual_quota")
+
+  leaveBalances   LeaveBalance[]
+  leaveRequests   LeaveRequest[]
+  attendanceDaily AttendanceDaily[]
+
+  @@map("leave_type")
+}
+
+model LeaveBalance {
+  employeeId  Int
+  employee    Employee  @relation(fields: [employeeId], references: [employeeId])
+  leaveTypeId Int       @map("leave_type_id")
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [leaveTypeId])
+  year        Int
+  allotted    Decimal   @db.Decimal(5, 1)
+  used        Decimal   @default(0) @db.Decimal(5, 1)
+
+  @@id([employeeId, leaveTypeId, year])
+  @@map("leave_balance")
+}
+
+model LeaveRequest {
+  leaveId     Int          @id @default(autoincrement()) @map("leave_id")
+  employeeId  Int?         @map("employee_id")
+  employee    Employee?    @relation(fields: [employeeId], references: [employeeId])
+  leaveTypeId Int?         @map("leave_type_id")
+  leaveType   LeaveType?   @relation(fields: [leaveTypeId], references: [leaveTypeId])
+  fromDate    DateTime     @map("from_date") @db.Date
+  toDate      DateTime     @map("to_date") @db.Date
+  reason      String?
+  status      String       @default("pending") @db.VarChar(20) // pending/approved/rejected
+  approvedBy  Int?         @map("approved_by")
+  approver    UserAccount? @relation("ApprovedBy", fields: [approvedBy], references: [userId])
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@map("leave_request")
+}
+
+model AttendanceDaily {
+  attendanceId       BigInt     @id @default(autoincrement()) @map("attendance_id")
+  employeeId         Int?       @map("employee_id")
+  employee           Employee?  @relation(fields: [employeeId], references: [employeeId])
+  attendanceDate     DateTime   @map("attendance_date") @db.Date
+  firstIn            DateTime?  @map("first_in") @db.Timestamp(6)
+  lastOut            DateTime?  @map("last_out") @db.Timestamp(6)
+  lateMinutes        Int        @default(0) @map("late_minutes")
+  otMinutes          Int        @default(0) @map("ot_minutes") // tracked for ALL employees; never paid out (confirmed)
+  // Arrived more than shift.late_threshold_minutes after start_time. Drives the monthly
+  // late-comer allowance — the 5th+ late day in a month is downgraded to Half-day.
+  isLate             Boolean    @default(false) @map("is_late")
+  status             String?    @db.VarChar(20) // Present/Absent/Half-day/On Leave/Off
+  leaveTypeId        Int?       @map("leave_type_id")
+  leaveType          LeaveType? @relation(fields: [leaveTypeId], references: [leaveTypeId])
+  isManuallyAdjusted Boolean    @default(false) @map("is_manually_adjusted")
+
+  @@unique([employeeId, attendanceDate])
+  @@index([employeeId, attendanceDate], map: "idx_attendance_emp_month")
+  @@map("attendance_daily")
+}
+
+// ========== PRODUCTION (Piece-Rate Employees Only) ==========
+
+model ProductionEntry {
+  entryId         BigInt       @id @default(autoincrement()) @map("entry_id")
+  employeeId      Int?         @map("employee_id")
+  employee        Employee?    @relation(fields: [employeeId], references: [employeeId])
+  entryDate       DateTime     @map("entry_date") @db.Date
+  recordsProduced Int          @default(0) @map("records_produced")
+  recordsAccepted Int          @default(0) @map("records_accepted")
+  recordsRejected Int          @default(0) @map("records_rejected")
+  rejectionReason String?      @map("rejection_reason")
+  submittedBy     Int?         @map("submitted_by")
+  submitter       UserAccount? @relation("SubmittedBy", fields: [submittedBy], references: [userId])
+  submittedAt     DateTime     @default(now()) @map("submitted_at") @db.Timestamp(6)
+
+  @@unique([employeeId, entryDate])
+  @@index([employeeId, entryDate], map: "idx_production_emp_month")
+  @@map("production_entry")
+}
+
+// ========== PAYROLL (Simplified — no statutory deductions, no OT pay for anyone) ==========
+
+model PayrollRecord {
+  payrollId    BigInt    @id @default(autoincrement()) @map("payroll_id")
+  employeeId   Int?      @map("employee_id")
+  employee     Employee? @relation(fields: [employeeId], references: [employeeId])
+  month        Int?
+  year         Int?
+  employeeType String?   @map("employee_type") @db.VarChar(20) // snapshot of type used for this calculation
+
+  // populated for fixed_salary employees
+  daysPresent       Int? @map("days_present") // FULL present days only — half-days are counted separately
+  daysHalfDay       Int? @map("days_half_day") // each one is worth 0.5 of a payable day
+  daysLate          Int? @map("days_late") // late arrivals in the month, incl. the forgiven ones
+  daysAbsent        Int? @map("days_absent")
+  daysOnPaidLeave   Int? @map("days_on_paid_leave")
+  daysOnUnpaidLeave Int? @map("days_on_unpaid_leave")
+  daysOff           Int? @map("days_off") // weekly offs + office-closed days; never payable-against
+  workingDays       Int? @map("working_days") // the denominator used for this month's proration
+  totalLateMinutes  Int? @map("total_late_minutes") // tracked/reportable for all employees
+  totalOtMinutes    Int? @map("total_ot_minutes") // tracked/reportable for all employees; NEVER included in net_pay (confirmed)
+
+  // populated for piece_rate employees
+  totalProduced Int? @map("total_produced")
+  totalAccepted Int? @map("total_accepted")
+  totalRejected Int? @map("total_rejected")
+
+  netPay      Decimal? @map("net_pay") @db.Decimal(10, 2)
+  reportS3Key String?  @map("report_s3_key") @db.VarChar(300)
+  generatedAt DateTime @default(now()) @map("generated_at") @db.Timestamp(6)
+  status      String   @default("draft") @db.VarChar(20) // draft/finalized/paid
+
+  @@unique([employeeId, month, year])
+  @@map("payroll_record")
+}
+
+model CorrectionRequest {
+  requestId   Int          @id @default(autoincrement()) @map("request_id")
+  employeeId  Int?         @map("employee_id")
+  employee    Employee?    @relation(fields: [employeeId], references: [employeeId])
+  requestType String?      @map("request_type") @db.VarChar(30) // missed_punch / wrong_attendance / production_dispute
+  targetDate  DateTime?    @map("target_date") @db.Date
+  description String?
+  status      String       @default("pending") @db.VarChar(20)
+  resolvedBy  Int?         @map("resolved_by")
+  resolver    UserAccount? @relation("ResolvedBy", fields: [resolvedBy], references: [userId])
+  resolvedAt  DateTime?    @map("resolved_at") @db.Timestamp(6)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@map("correction_request")
+}
+
+// Gap-fill: described in LLD Section 6 ("every write... triggered by a correction/manual
+// adjustment is logged... separate audit_log table") but no DDL was given there.
+model AuditLog {
+  auditLogId Int          @id @default(autoincrement()) @map("audit_log_id")
+  tableName  String       @map("table_name") @db.VarChar(50)
+  recordId   String       @map("record_id") @db.VarChar(50)
+  changedBy  Int?         @map("changed_by")
+  changer    UserAccount? @relation("ChangedBy", fields: [changedBy], references: [userId])
+  oldValue   Json?        @map("old_value")
+  newValue   Json?        @map("new_value")
+  changedAt  DateTime     @default(now()) @map("changed_at") @db.Timestamp(6)
+
+  @@index([tableName, recordId], map: "idx_audit_table_record")
+  @@map("audit_log")
+}

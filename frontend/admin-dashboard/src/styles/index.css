@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "@punchcloud/shared/src/styles/tokens.css";
+
+body {
+  @apply bg-gray-50 text-gray-900;
+}
