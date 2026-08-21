@@ -34,20 +34,24 @@ export class HolidaysController {
 }
 
 // Not an explicit LLD endpoint, but leave_type quotas are described as configurable
-// (design doc 6.1) — HR manage them the same way holidays are managed.
+// (design doc 6.1) — HR manage them the same way holidays are managed. Reading the list,
+// though, must be open to Employee too: self-service's "Apply for Leave" form populates its
+// leave-type dropdown from this same GET — a class-level HR-only guard silently emptied
+// that dropdown for every employee (found live 2026-08-21).
 @ApiTags("leave-types")
 @ApiBearerAuth()
 @Controller("leave-types")
-@Roles(Role.HR)
 export class LeaveTypesController {
   constructor(private prisma: PrismaService) {}
 
   @Post()
+  @Roles(Role.HR)
   create(@Body() dto: CreateLeaveTypeDto) {
     return this.prisma.leaveType.create({ data: dto });
   }
 
   @Get()
+  @Roles(Role.HR, Role.EMPLOYEE)
   findAll() {
     return this.prisma.leaveType.findMany({ orderBy: { leaveTypeId: "asc" } });
   }
