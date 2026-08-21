@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button, Modal, useToast, EmployeeType } from "@punchcloud/shared";
+import { Button, Modal, useToast, EmployeeType, apiClient } from "@punchcloud/shared";
 import { useCreateEmployee, useEmployee, useUpdateEmployee } from "../../features/employees/useEmployees";
 import { useChangeSalaryStructure } from "../../features/employees/useSalaryStructure";
 import { EmployeeTypeToggle } from "../../components/EmployeeTypeToggle";
+
+interface ShiftOption {
+  shiftId: number;
+  name: string | null;
+  startTime: string;
+  endTime: string;
+}
 
 // email is only rendered (and required) on create — the field is hidden entirely in edit
 // mode (an existing employee's login email isn't editable here). The schema has to match:
@@ -21,6 +29,10 @@ function buildSchema(isEdit: boolean) {
       designation: z.string().optional(),
       deviceEnrollmentId: z.string().optional(),
       dateOfJoining: z.string().optional(),
+      // Required: without a shift, late-arrival and half-day detection silently never fire
+      // for this employee (found live 2026-08-21 — a real employee created through this
+      // exact form had isLate stuck at false no matter how late they punched in).
+      shiftId: z.coerce.number({ invalid_type_error: "Select a shift" }).min(1, "Select a shift"),
       employeeType: z.enum(["piece_rate", "fixed_salary"]),
       monthlyBaseSalary: z.coerce.number().optional(),
       perRecordRate: z.coerce.number().optional(),
@@ -51,6 +63,11 @@ export function EmployeeFormPage() {
   const [newLogin, setNewLogin] = useState<{ email: string; password: string } | null>(null);
   const schema = useMemo(() => buildSchema(isEdit), [isEdit]);
 
+  const { data: shifts } = useQuery({
+    queryKey: ["shifts"],
+    queryFn: () => apiClient.get<ShiftOption[]>("/shifts").then((r) => r.data),
+  });
+
   const {
     register,
     handleSubmit,
@@ -67,6 +84,10 @@ export function EmployeeFormPage() {
           designation: existing.designation ?? "",
           deviceEnrollmentId: existing.deviceEnrollmentId ?? "",
           dateOfJoining: existing.dateOfJoining?.slice(0, 10) ?? "",
+          // 0 rather than undefined: an existing employee saved before this field existed
+          // has no shift at all — surfacing that as an invalid selection (rather than
+          // silently treating it as "fine") is exactly the point of this fix.
+          shiftId: existing.shiftId ?? 0,
           employeeType: existing.salaryStructures?.[0]?.employeeType ?? "piece_rate",
           monthlyBaseSalary: existing.salaryStructures?.[0]?.monthlyBaseSalary ?? undefined,
           perRecordRate: existing.salaryStructures?.[0]?.perRecordRate ?? undefined,
@@ -74,6 +95,16 @@ export function EmployeeFormPage() {
         }
       : undefined,
   });
+
+  // Most companies here run a single shift — pre-select it on a NEW employee so HR isn't
+  // forced to make a choice that, in practice, only ever has one right answer. Still fully
+  // visible/changeable, and existing employees (values.shiftId already set above) are left
+  // alone.
+  useEffect(() => {
+    if (!isEdit && shifts?.length === 1) {
+      setValue("shiftId", shifts[0].shiftId);
+    }
+  }, [isEdit, shifts, setValue]);
 
   // The `employeeType` local state drives which rate field is *displayed* (EmployeeTypeToggle
   // + the conditional Monthly Salary/Per-Record Rate input below); RHF's `values` prop above
@@ -102,6 +133,7 @@ export function EmployeeFormPage() {
             name: values.name,
             designation: values.designation,
             deviceEnrollmentId: values.deviceEnrollmentId,
+            shiftId: values.shiftId,
           },
         });
         await changeSalaryStructure.mutateAsync({ employeeId: existing.employeeId, input: salaryStructure });
@@ -117,6 +149,7 @@ export function EmployeeFormPage() {
           designation: values.designation,
           deviceEnrollmentId: values.deviceEnrollmentId,
           dateOfJoining: values.dateOfJoining,
+          shiftId: values.shiftId,
           salaryStructure,
         });
         toast.show("Employee created", "success");
@@ -164,6 +197,22 @@ export function EmployeeFormPage() {
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Device Enrollment ID</label>
           <input {...register("deviceEnrollmentId")} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Shift</label>
+          <select {...register("shiftId")} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="">Select a shift...</option>
+            {(shifts ?? []).map((s) => (
+              <option key={s.shiftId} value={s.shiftId}>
+                {s.name ?? `Shift ${s.shiftId}`} ({new Date(s.startTime).toISOString().slice(11, 16)}–
+                {new Date(s.endTime).toISOString().slice(11, 16)})
+              </option>
+            ))}
+          </select>
+          {errors.shiftId && <p className="text-xs text-red-600">{errors.shiftId.message}</p>}
+          <p className="mt-1 text-xs text-gray-500">
+            Determines this employee's working hours, late-arrival threshold, and weekly off day.
+          </p>
         </div>
         {!isEdit && (
           <div>
