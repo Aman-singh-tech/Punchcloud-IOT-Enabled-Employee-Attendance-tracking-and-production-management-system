@@ -39,7 +39,7 @@ export function MonthlyBarChart({
       {!hasData ? (
         <p className="py-10 text-center text-sm text-gray-400">{emptyMessage}</p>
       ) : (
-        <div className="mt-4 flex h-48 items-end gap-2">
+        <div className="mt-4 flex h-48 items-stretch gap-2">
           {bars.map((bar) => {
             const pct = (bar.value / max) * 100;
             const subPct = bar.subValue ? (bar.subValue / max) * 100 : 0;
