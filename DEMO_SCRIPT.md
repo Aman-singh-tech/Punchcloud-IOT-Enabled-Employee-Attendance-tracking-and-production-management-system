@@ -2,7 +2,7 @@
 
 ## Setup (Demo Se 10 Min Pehle)
 
-**3 alag terminal tabs kholo** (VS Code mein `Ctrl+Shift+\`` se naya tab, ya "+" button):
+**3 alag terminal tabs kholo:**
 
 **Terminal 1 — Backend (chhedna mat, hamesha khula rakhna):**
 ```bash
@@ -25,14 +25,14 @@ pnpm dev
 ```
 
 **Browser mein 2 tabs khol lo:**
-- `http://localhost:5173` (Admin)
-- `http://localhost:5174` (Self-Service)
+- `http://localhost:5173` (Admin — HR)
+- `http://localhost:5174` (Self-Service — Employee)
 
 **Login credentials (sab ka password: `Password123!`):**
 
-| Email | Role |
+| Email | Kaun |
 |---|---|
-| `hr@punchcloud.dev` | HR (production entry, attendance, payroll, disbursement — sab kuch) |
+| `hr@punchcloud.dev` | HR — ek hi login se sab kuch (employees, attendance, production, payroll, disbursement, shifts) |
 | `asha.rao@punchcloud.dev` | Employee (Fixed-Salary) |
 | `ravi.kumar@punchcloud.dev` | Employee (Piece-Rate) |
 
@@ -40,50 +40,65 @@ pnpm dev
 
 ## Part A — Concept Samjhao (Computer Chhune Se Pehle, 2 Min)
 
-> "Ye system 4 steps mein kaam karta hai: **Employee punch karta hai machine pe → System khud attendance calculate karta hai → HR production entry karta hai (data-entry workers ke liye) → Mahine ke end mein system khud payroll calculate kar deta hai.** Koi Excel nahi, koi manual calculation nahi."
+> "Ye system 4 steps mein kaam karta hai: **Employee punch karta hai machine pe → System khud attendance calculate karta hai (late/half-day rule ke saath) → HR production entry karta hai (data-entry workers ke liye) → Mahine ke end mein system khud payroll calculate kar deta hai.** Koi Excel nahi, koi manual calculation nahi."
 
-> "Do tarah ke employees hote hain: **Piece-Rate** (data entry operators — jitna kaam accept hua utna paisa, attendance ka koi lena-dena nahi) aur **Fixed-Salary** (office staff — mahine ki salary sirf present days ke proportion mein). OT kisi ko paid nahi hota."
+> "Do tarah ke employees hote hain: **Piece-Rate** (data entry operators — jitna kaam accept hua utna paisa, attendance ka koi lena-dena nahi) aur **Fixed-Salary** (office staff — mahine ki salary sirf present days ke proportion mein). OT kisi ko paid nahi hota, leave ka bhi paisa nahi milta — attendance hi salary decide karti hai."
 
-> "Piece-rate wale ki attendance record to hoti hai, lekin sirf HR ki jaankari ke liye — uski salary sirf pieces se banti hai. Aur fixed-salary wale agar pieces banaye, wo sirf company ke total production mein judte hain, uski salary mein nahi."
+> "Piece-rate wale ki attendance record hoti hai, lekin sirf HR ki jaankari ke liye — uski salary sirf pieces se banti hai. Fixed-salary wale agar pieces banaye, wo sirf company ke total production mein judte hain, uski salary mein nahi."
 
 ---
 
 ## Part B — Live Demo (Step-by-Step)
 
-### 1. Admin Dashboard — Today's Attendance
-`localhost:5173` → HR login → **"Today's Attendance"** dikhao.
+### 1. Admin Dashboard — Company Overview
+`localhost:5173` → HR login → seedha **Company Overview** dashboard khulega.
+
+> "Ye dashboard company ka poora health ek nazar mein dikhata hai — last 6 mahine ka production aur salary cost trend, aaj kitne log present/absent hain, rejection rate. Har 30 second mein khud refresh hota hai."
 
 ### 2. LIVE Punch Karo
-Terminal 4 (ek aur naya terminal, ya Terminal 2/3 ke beech mein) mein:
+Terminal 4 (naya terminal) mein:
 ```bash
 cd "C:\Users\Aman Singh\OneDrive\Desktop\TEMP\PunchCloud\backend"
 pnpm mock:punch -- --employee=BIO-0001 --direction=IN
 ```
-Dashboard refresh karo — Asha Rao ka naya punch time turant dikhega. Bolo: *"Ye real machine se bhi bilkul aise hi aayega."*
+**"Attendance"** page kholo, Asha Rao select karo — naya punch time turant dikhega. Bolo: *"Ye real machine se bhi bilkul aise hi aayega."*
 
 ### 3. Naya Employee LIVE Add Karo
-**"Employees" → "+ New Employee"** — client ke saamne ek naya employee banao. **Pay Type toggle** dikhao (Piece-Rate select karo to sirf rate field dikhega, Fixed-Salary karo to sirf salary field). Save karte hi ek **temporary password** dikhega — bolo: *"HR isi tarah naye employee ka login bhi turant bana deta hai."*
+**"Employees" → "+ New Employee"** — client ke saamne ek naya employee banao.
+- **Shift** dropdown dikhao — bolo: *"Ye decide karta hai employee ka office time kya hai, aur late kab ginega."*
+- **Pay Type toggle** dikhao (Piece-Rate select karo to sirf rate field dikhega, Fixed-Salary karo to sirf salary field)
+- Save karte hi ek **temporary password** dikhega — bolo: *"HR isi tarah naye employee ka login bhi turant bana deta hai."*
 
-### 4. Attendance History Dikhao
-**"Attendance Report"** → Asha Rao select karo → poora August ka record dikhao (Present/Absent/Off/On Leave colored status ke saath). Bolo: *"Poore mahine ka record automatically bana hai — Sunday aur company holiday dono 'Off' dikhte hain, absent nahi."*
+### 4. Late-Comer Rule Samjhao
+**"Late Comers"** report kholo — jo log late aaye unki list dikhegi.
 
-### 5. Production Dikhao
-**"Production Report"** → Ravi Kumar ka poore mahine ka Produced/Accepted/Rejected data + rejection-rate chart.
+> "Har employee ko mahine mein **4 din late aane ki chhoot** hai — 15 minute se zyada late ho to wahi din late gina jaata hai. 4 din tak poori salary milti hai. **5th late din se** us din **Half-day** lag jaata hai — matlab aadhe din ki salary kat jaati hai. Ye rule **Settings → Shifts** page se HR khud set/badal sakta hai."
 
-### 6. Self-Service App Dikhao (Doosri Browser Tab)
+### 5. Attendance History Dikhao
+**"Attendance Report"** → Asha Rao select karo → poora August ka record dikhao (Present/Absent/Off/On Leave colored status ke saath).
+
+> "Sunday aur company holiday dono 'Off' dikhte hain, Absent nahi — aur Off din ka salary pe koi negative asar nahi hota."
+
+### 6. Production Dikhao
+**"Production Report"** → upar employee dropdown se Ravi Kumar filter karo → poore mahine ka Produced/Accepted/Rejected data + rejection-rate chart.
+
+### 7. Self-Service App Dikhao (Doosri Browser Tab)
 `localhost:5174` → Ravi Kumar se login:
-- Naya polished UI dikhao (gradient login, icons wala bottom nav)
 - "This Period" production card dikhega
 - Asha Rao se alag tab mein login karo — dikhao **"Production" tab hai hi nahi** uske liye (conditional UI proof)
-- Asha se **"Apply for Leave"** pe click karo, ek din ki leave apply karo
+- Asha se **"Apply for Leave"** pe click karo, ek din ki leave apply karo (koi leave-type choose nahi karna padta — sab automatically "Unpaid" hai, kyunki company paid leave deti hi nahi)
 
-### 7. Leave Approval (Wapas Admin)
-**"Leave Approvals"** → approve karo. **"Attendance"** mein wo din turant **"On Leave"** dikhega, Leave Balance automatically kam hoga.
+### 8. Notification Bell Dikhao (Naya, Impressive Moment)
+Turant **wapas Admin tab** pe jao — **bell icon** pe laal badge "1" dikhega, bina refresh kiye (har 20 second khud check karta hai).
 
-> "Leave ka record rakha jaata hai taaki HR ko pata rahe employee kyun nahi aaya — lekin **leave ka paisa nahi milta**. Salary sirf present days ki banti hai."
+> "Jaise hi employee kuch bhi karta hai — leave maange, to HR ko turant pata chal jaata hai, app ke andar hi. Koi email ki zaroorat nahi."
 
-### 8. Correction/Dispute Dikhao (Optional)
-**"Corrections"** queue pe jao — dikhao ki agar employee "forgot to punch out" jaisi dispute raise kare, to wo yahan aati hai approval ke liye.
+Bell pe click karo → notification pe click karo → seedha **Leave Approvals** page khul jaata hai.
+
+### 9. Leave Approval
+**"Leave Approvals"** → Approve dabao. Wapas self-service (Ravi/Asha) tab pe jao aur uska bell bhi check karo — usko turant "approved" ka notification milega.
+
+> "Leave ka record rakha jaata hai taaki HR ko pata rahe employee kyun nahi aaya — lekin **leave ka paisa nahi milta**. Salary sirf present days ki banti hai, chahe leave li ho ya bina bataye absent hua ho."
 
 ---
 
@@ -93,9 +108,9 @@ Dashboard refresh karo — Asha Rao ka naya punch time turant dikhega. Bolo: *"Y
 
 ### 🔹 Ravi Kumar (Piece-Rate) — Formula: `Accepted Pieces × Rate`
 
-> "Is mahine Ravi ne total **2486 pieces accept** karwaye, rate ₹1/piece hai. System ne calculate kiya: **2486 × ₹1 = ₹2,486**. Attendance ka isme koi role nahi — chahe wo kabhi absent hua ho, uske accepted pieces pe koi asar nahi."
+> "Is mahine Ravi ne total **~2,486 pieces accept** karwaye, rate ₹1/piece hai. System ne calculate kiya: **2,486 × ₹1 = ₹2,486**. Attendance ka isme koi role nahi — chahe wo kabhi absent hua ho, late aaya ho, uske accepted pieces pe koi asar nahi."
 
-*(Paper/whiteboard pe likho: `2486 × ₹1 = ₹2,486` — payslip pe wahi number dikhao, client khud verify kar lega)*
+*(Paper/whiteboard pe likho: `2,486 × ₹1 = ₹2,486` — payslip pe wahi number dikhao, client khud verify kar lega)*
 
 ### 🔹 Asha Rao (Fixed-Salary) — Formula: `Present Days / Working Days × Salary`
 
@@ -104,14 +119,14 @@ Dashboard refresh karo — Asha Rao ka naya punch time turant dikhega. Bolo: *"Y
 
 *(Ye number **poori salary nahi hai** — isse dikhta hai ki system sach mein absent days ke liye kaat raha hai, hamesha full salary nahi de raha)*
 
-**OT ka point:** Asha ke payslip pe **240 OT minutes** likhe hain, lekin uske paise nahi jude.
+**OT ka point:** payslip pe OT minutes record hote hain, par paisa nahi jodta.
 > "OT kisi ko bhi paid nahi hota — na fixed-salary wale ko, na piece-rate wale ko. Record isliye rakha jaata hai taaki HR ko pata rahe kaun kitna ruk raha hai, lekin salary attendance se hi banti hai."
 
-**Off days ka point:** payslip pe **5 Off days** bhi dikhte hain (Sundays).
-> "Sunday ya company holiday — dono 'Off' hain. Ye din working days mein ginte hi nahi, isliye fixed-salary wale ka in dino ka paisa **nahi katta**. Piece-rate wale ka us din koi kaam nahi to koi paisa nahi — automatic."
+**Off days ka point:** payslip pe Weekly Off Days bhi dikhte hain (Sundays).
+> "Sunday ya company holiday — dono 'Off' hain. Ye din working days mein ginte hi nahi, isliye fixed-salary wale ka in dino ka paisa **nahi katta**."
 
 ### 🔹 Finalize + Disbursement
-**"Finalize"** dabao dono payslips pe. Wahi HR login se **"Disbursement File"** pe jao aur CSV download karo — dikhao ki dono ka net pay (₹2,486 + ₹23,076.92) ek bank-ready file mein hai (ek hi HR account se sab kuch access hota hai — alag Finance ya Admin login ki zaroorat nahi).
+**"Finalize"** dabao dono payslips pe — bolo: *"Ye button ek baar dabne ke baad payslip lock ho jaati hai, dobara automatically recalculate nahi hogi."* Wahi HR login se **"Disbursement File"** pe jao aur CSV download karo — dikhao ki dono ka net pay (₹2,486 + ₹23,076.92) ek bank-ready file mein hai (ek hi HR account se sab kuch access hota hai — alag Finance ya Admin login ki zaroorat nahi).
 
 ---
 
@@ -121,6 +136,10 @@ Ravi Kumar (Employee) se login karke Asha ka payslip URL directly access karne k
 > "Har employee sirf apna hi data dekh sakta hai — koi doosre ka nahi, chahe wo URL seedha type kare."
 
 ---
+
+## Agar Client Poochhe: "Holiday kaise add karenge?"
+
+**Settings → Shifts** page ke neeche **"Festival Holidays"** section hai — Diwali/Holi date daalo, wo din bhi "Off" ban jaayega, sabki salary pe koi negative asar nahi hoga.
 
 ## Agar Kuch Crash Ho Jaye Demo Ke Beech
 
@@ -132,4 +151,4 @@ Ravi Kumar (Employee) se login karke Asha ka payslip URL directly access karne k
 
 ## Zaroori Reminder
 
-Ye demo data (poore August ka attendance/production) ek **one-time script se pehle se bhara gaya hai** taaki numbers realistic dikhein — real deployment mein ye data roz punch machine aur supervisor se aayega, is script se nahi.
+Ye demo data (poore August ka attendance/production) ek **one-time script se pehle se bhara gaya hai** taaki numbers realistic dikhein — real deployment mein ye data roz punch machine aur HR se aayega, is script se nahi.
