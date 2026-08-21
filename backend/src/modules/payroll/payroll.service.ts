@@ -9,6 +9,7 @@ import { PrismaService } from "../../common/prisma.service";
 import { S3Service } from "../../common/s3.service";
 import { SalaryStructureRepository } from "../employees/salary-structure.repository";
 import { PayslipPdfService } from "./payslip-pdf.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import {
   calculateFixedSalaryNetPay,
   calculatePayableDays,
@@ -16,6 +17,11 @@ import {
 } from "./payroll-calculation";
 import { calculateWorkingDays, daysInMonth } from "./working-days.util";
 import { parseDateOnly } from "../../common/utils/wall-clock.util";
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 export interface PayrollGenerationResult {
   employeeId: number;
@@ -34,6 +40,7 @@ export class PayrollService {
     private s3: S3Service,
     private salaryStructures: SalaryStructureRepository,
     private payslipPdf: PayslipPdfService,
+    private notifications: NotificationsService,
   ) {}
 
   async generatePayroll(employeeId: number, month: number, year: number) {
@@ -252,10 +259,21 @@ export class PayrollService {
     if (record.status !== "draft") {
       throw new ForbiddenException(`Payroll record ${payrollId} is already ${record.status}`);
     }
-    return this.prisma.payrollRecord.update({
+    const finalized = await this.prisma.payrollRecord.update({
       where: { payrollId },
       data: { status: "finalized" },
     });
+
+    if (record.employeeId && record.month && record.year) {
+      await this.notifications.notifyEmployee(
+        record.employeeId,
+        "payslip_ready",
+        `Your payslip for ${MONTH_NAMES[record.month - 1]} ${record.year} is ready`,
+        "/payslips",
+      );
+    }
+
+    return finalized;
   }
 
   // LLD 2.5 /payroll/disbursement-file — NEFT/RTGS-style CSV export, file generation only

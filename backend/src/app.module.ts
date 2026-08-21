@@ -12,6 +12,7 @@ import { LeaveModule } from "./modules/leave/leave.module";
 import { PayrollModule } from "./modules/payroll/payroll.module";
 import { CorrectionsModule } from "./modules/corrections/corrections.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
+import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { JobsModule } from "./jobs/jobs.module";
 
 @Module({
@@ -28,6 +29,7 @@ import { JobsModule } from "./jobs/jobs.module";
     PayrollModule,
     CorrectionsModule,
     DashboardModule,
+    NotificationsModule,
     JobsModule,
   ],
   controllers: [HealthController],

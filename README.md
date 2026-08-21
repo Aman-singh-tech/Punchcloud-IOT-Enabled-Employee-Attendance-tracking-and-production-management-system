@@ -51,6 +51,28 @@ type-checked — actually broken at runtime until fixed):
    times by the browser's UTC offset — fixed by making the formatters UTC-based too
    (`frontend/shared/src/utils/formatDate.ts`).
 
+## Notifications
+
+In-app notification bell (client-requested 2026-08-21) — deliberately not email, since AWS SES's
+sandbox mode would require every employee's address to be verified individually before the
+company scales past a handful of people. Both frontends poll `GET /notifications` /
+`GET /notifications/unread-count` every 20s.
+
+| Event | Audience |
+|---|---|
+| Leave request submitted | HR |
+| Leave approved / rejected | Employee |
+| Correction request raised | HR |
+| Correction resolved | Employee |
+| Payroll finalized (payslip ready) | Employee |
+
+Backend: `modules/notifications/` (`Notification` model — `audience: "HR" \| "EMPLOYEE"`,
+optional `employeeId`). Triggered inline from `leave.service.ts`, `corrections.service.ts`,
+and `payroll.service.ts` at the exact point each event happens — there is no separate polling
+job. Frontend: `useNotifications`/`useUnreadNotificationCount`/`useNotificationActions` in
+`@punchcloud/shared`, rendered by each app's own `NotificationBell` (admin-dashboard: plain
+inline SVG bell; self-service: Lucide `Bell` icon, matching each app's existing style).
+
 `S3Service` degrades to a logged no-op when AWS credentials aren't configured (so a missing
 bucket/credentials never crashes the request that triggered an archival write — punch/
 production archival is supplementary to the primary DB write per the LLD). **A real S3

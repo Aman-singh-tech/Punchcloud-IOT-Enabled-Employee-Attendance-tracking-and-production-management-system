@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { useAuth, Button } from "@punchcloud/shared";
 import { Sidebar } from "./Sidebar";
+import { NotificationBell } from "../components/NotificationBell";
 
 export function DashboardLayout() {
   const { user, logout } = useAuth();
@@ -14,9 +15,12 @@ export function DashboardLayout() {
           <div className="text-sm text-gray-500">
             Signed in as <span className="font-medium text-gray-800">{user.email}</span> ({user.role})
           </div>
-          <Button variant="secondary" onClick={logout}>
-            Log out
-          </Button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <Button variant="secondary" onClick={logout}>
+              Log out
+            </Button>
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6">
           <Outlet />

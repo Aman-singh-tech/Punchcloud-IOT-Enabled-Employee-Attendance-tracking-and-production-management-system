@@ -3,9 +3,10 @@ import { PayrollService } from "./payroll.service";
 import { PayrollController } from "./payroll.controller";
 import { PayslipPdfService } from "./payslip-pdf.service";
 import { EmployeesModule } from "../employees/employees.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 
 @Module({
-  imports: [EmployeesModule],
+  imports: [EmployeesModule, NotificationsModule],
   controllers: [PayrollController],
   providers: [PayrollService, PayslipPdfService],
   exports: [PayrollService],

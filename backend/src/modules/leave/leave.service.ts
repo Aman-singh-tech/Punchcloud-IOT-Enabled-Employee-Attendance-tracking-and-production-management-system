@@ -7,6 +7,7 @@ import {
 import { PrismaService } from "../../common/prisma.service";
 import { CreateLeaveRequestDto } from "./dto/create-leave-request.dto";
 import { parseDateOnly, todayDateKey } from "../../common/utils/wall-clock.util";
+import { NotificationsService } from "../notifications/notifications.service";
 
 function durationDays(from: Date, to: Date): number {
   return Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
@@ -20,7 +21,10 @@ function* dateRange(from: Date, to: Date): Generator<Date> {
 
 @Injectable()
 export class LeaveService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   async submit(employeeId: number, dto: CreateLeaveRequestDto) {
     const from = parseDateOnly(dto.fromDate);
@@ -28,7 +32,7 @@ export class LeaveService {
     if (to < from) {
       throw new BadRequestException("toDate cannot be before fromDate");
     }
-    return this.prisma.leaveRequest.create({
+    const request = await this.prisma.leaveRequest.create({
       data: {
         employeeId,
         leaveTypeId: dto.leaveTypeId,
@@ -38,6 +42,15 @@ export class LeaveService {
         status: "pending",
       },
     });
+
+    const employee = await this.prisma.employee.findUnique({ where: { employeeId } });
+    await this.notifications.notifyHr(
+      "leave_requested",
+      `${employee?.name ?? "An employee"} requested leave from ${dto.fromDate} to ${dto.toDate}`,
+      "/leave/approvals",
+    );
+
+    return request;
   }
 
   // employeeId is set only for a self-service caller (Employee role) — see
@@ -66,13 +79,20 @@ export class LeaveService {
     }
 
     if (status === "rejected") {
-      return this.prisma.leaveRequest.update({
+      const updated = await this.prisma.leaveRequest.update({
         where: { leaveId },
         data: { status: "rejected", approvedBy: approvedByUserId },
       });
+      await this.notifications.notifyEmployee(
+        leaveRequest.employeeId!,
+        "leave_rejected",
+        `Your leave request (${leaveRequest.fromDate.toISOString().slice(0, 10)} to ${leaveRequest.toDate.toISOString().slice(0, 10)}) was rejected`,
+        "/leave",
+      );
+      return updated;
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const approved = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.leaveRequest.update({
         where: { leaveId },
         data: { status: "approved", approvedBy: approvedByUserId },
@@ -122,6 +142,14 @@ export class LeaveService {
 
       return updated;
     });
+
+    await this.notifications.notifyEmployee(
+      leaveRequest.employeeId!,
+      "leave_approved",
+      `Your leave request (${leaveRequest.fromDate.toISOString().slice(0, 10)} to ${leaveRequest.toDate.toISOString().slice(0, 10)}) was approved`,
+      "/leave",
+    );
+    return approved;
   }
 
   async getBalance(employeeId: number) {

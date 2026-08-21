@@ -9,6 +9,7 @@ import { AuditService } from "../../common/audit.service";
 import { CreateCorrectionDto } from "./dto/create-correction.dto";
 import { ResolveCorrectionDto } from "./dto/resolve-correction.dto";
 import { parseDateOnly } from "../../common/utils/wall-clock.util";
+import { NotificationsService } from "../notifications/notifications.service";
 
 // Design doc Section 6.7: raise -> supervisor/HR approves or rejects, with a reason ->
 // if approved, the underlying attendance_daily/production_entry record is corrected and
@@ -18,10 +19,11 @@ export class CorrectionsService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
+    private notifications: NotificationsService,
   ) {}
 
   async raise(employeeId: number, dto: CreateCorrectionDto) {
-    return this.prisma.correctionRequest.create({
+    const request = await this.prisma.correctionRequest.create({
       data: {
         employeeId,
         requestType: dto.requestType,
@@ -30,6 +32,15 @@ export class CorrectionsService {
         status: "pending",
       },
     });
+
+    const employee = await this.prisma.employee.findUnique({ where: { employeeId } });
+    await this.notifications.notifyHr(
+      "correction_raised",
+      `${employee?.name ?? "An employee"} raised a ${dto.requestType.replace(/_/g, " ")} correction for ${dto.targetDate}`,
+      "/attendance/corrections",
+    );
+
+    return request;
   }
 
   async listMine(employeeId: number) {
@@ -81,7 +92,7 @@ export class CorrectionsService {
       }
     }
 
-    return this.prisma.correctionRequest.update({
+    const updated = await this.prisma.correctionRequest.update({
       where: { requestId },
       data: {
         status: dto.status,
@@ -92,6 +103,17 @@ export class CorrectionsService {
           : request.description,
       },
     });
+
+    if (request.employeeId) {
+      await this.notifications.notifyEmployee(
+        request.employeeId,
+        "correction_resolved",
+        `Your correction request was ${dto.status}${dto.resolutionNote ? `: ${dto.resolutionNote}` : ""}`,
+        "/corrections",
+      );
+    }
+
+    return updated;
   }
 
   private async applyAttendanceCorrection(

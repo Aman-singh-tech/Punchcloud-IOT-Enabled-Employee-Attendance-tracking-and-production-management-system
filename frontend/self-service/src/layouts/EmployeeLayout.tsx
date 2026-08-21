@@ -2,6 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth, employeeApi } from "@punchcloud/shared";
 import { Home, CalendarDays, Wallet, Package, CalendarCheck, FileWarning, LogOut, Fingerprint } from "lucide-react";
+import { NotificationBell } from "../components/NotificationBell";
 
 const NAV_ITEMS = [
   { label: "Home", to: "/", icon: Home },
@@ -43,7 +44,8 @@ export function EmployeeLayout() {
           </div>
           <span className="text-sm font-bold text-slate-900">PunchCloud</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <NotificationBell />
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-light text-xs font-bold text-primary">
             {initials}
           </div>

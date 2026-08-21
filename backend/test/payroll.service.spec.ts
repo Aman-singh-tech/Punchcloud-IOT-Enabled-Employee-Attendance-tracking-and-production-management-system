@@ -35,6 +35,7 @@ function buildPrismaMock(overrides: Partial<Record<string, any>> = {}) {
 }
 
 const s3Mock = { putBuffer: jest.fn().mockResolvedValue("key"), getSignedDownloadUrl: jest.fn() };
+const notificationsMock = { notifyHr: jest.fn(), notifyEmployee: jest.fn() };
 const pdfMock = { render: jest.fn().mockResolvedValue(Buffer.from("pdf")) };
 
 describe("PayrollService.generatePayroll", () => {
@@ -62,7 +63,7 @@ describe("PayrollService.generatePayroll", () => {
         monthlyBaseSalary: null,
       }),
     };
-    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any);
+    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any, notificationsMock as any);
 
     const record = await service.generatePayroll(1, 8, 2026);
 
@@ -75,7 +76,7 @@ describe("PayrollService.generatePayroll", () => {
     const salaryStructures = {
       getActiveAsOf: jest.fn().mockResolvedValue({ employeeType: "piece_rate", perRecordRate: 2, monthlyBaseSalary: null }),
     };
-    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any);
+    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any, notificationsMock as any);
 
     const record = await service.generatePayroll(1, 8, 2026);
     expect(record.netPay).toBe(0);
@@ -98,7 +99,7 @@ describe("PayrollService.generatePayroll", () => {
         monthlyBaseSalary: 20000,
       }),
     };
-    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any);
+    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any, notificationsMock as any);
 
     const record = await service.generatePayroll(1, 8, 2026);
     expect(record.workingDays).toBe(26);
@@ -124,7 +125,7 @@ describe("PayrollService.generatePayroll", () => {
         monthlyBaseSalary: 20000,
       }),
     };
-    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any);
+    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any, notificationsMock as any);
 
     const record = await service.generatePayroll(1, 8, 2026);
     expect(record.daysOnPaidLeave).toBe(3); // still recorded for HR's reports
@@ -140,7 +141,7 @@ describe("PayrollService.generatePayroll", () => {
     const salaryStructures = {
       getActiveAsOf: jest.fn().mockResolvedValue({ employeeType: "fixed_salary", perRecordRate: null, monthlyBaseSalary: 20000 }),
     };
-    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any);
+    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any, notificationsMock as any);
 
     const record = await service.generatePayroll(1, 8, 2026);
     expect(record.netPay).toBe(0);
@@ -158,7 +159,7 @@ describe("PayrollService.generatePayroll", () => {
     const salaryStructures = {
       getActiveAsOf: jest.fn().mockResolvedValue({ employeeType: "fixed_salary", perRecordRate: null, monthlyBaseSalary: 20000 }),
     };
-    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any);
+    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any, notificationsMock as any);
 
     // working_days = 31 - 5 Sundays = 26
     const withoutOt = calculateExpected(25, 26, 20000);
@@ -184,7 +185,7 @@ describe("PayrollService.generatePayroll", () => {
     const salaryStructures = {
       getActiveAsOf: jest.fn().mockResolvedValue({ employeeType: "piece_rate", perRecordRate: 2, monthlyBaseSalary: null }),
     };
-    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any);
+    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any, notificationsMock as any);
 
     const record = await service.generatePayroll(1, 8, 2026);
 
@@ -206,7 +207,7 @@ describe("PayrollService.generatePayroll", () => {
     const salaryStructures = {
       getActiveAsOf: jest.fn().mockResolvedValue({ employeeType: "fixed_salary", perRecordRate: null, monthlyBaseSalary: 20000 }),
     };
-    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any);
+    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any, notificationsMock as any);
 
     const record = await service.generatePayroll(1, 8, 2026);
 
@@ -227,7 +228,7 @@ describe("PayrollService.generatePayroll", () => {
       monthlyBaseSalary: 15000, // the OLD rate that was active during August
     });
     const salaryStructures = { getActiveAsOf };
-    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any);
+    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any, notificationsMock as any);
 
     await service.generatePayroll(1, 8, 2026);
 
@@ -254,7 +255,7 @@ describe("PayrollService.generatePayroll", () => {
     const salaryStructures = {
       getActiveAsOf: jest.fn().mockResolvedValue({ employeeType: "fixed_salary", perRecordRate: null, monthlyBaseSalary: 20000 }),
     };
-    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any);
+    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any, notificationsMock as any);
 
     const record = await service.generatePayroll(1, 8, 2026);
 
@@ -280,7 +281,7 @@ describe("PayrollService.generatePayroll", () => {
     const salaryStructures = {
       getActiveAsOf: jest.fn().mockResolvedValue({ employeeType: "fixed_salary", perRecordRate: null, monthlyBaseSalary: 20000 }),
     };
-    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any);
+    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any, notificationsMock as any);
 
     const record = await service.generatePayroll(1, 8, 2026);
 
@@ -302,7 +303,7 @@ describe("PayrollService.generatePayroll", () => {
     const salaryStructures = {
       getActiveAsOf: jest.fn().mockResolvedValue({ employeeType: "piece_rate", perRecordRate: 2, monthlyBaseSalary: null }),
     };
-    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any);
+    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any, notificationsMock as any);
 
     const record = await service.generatePayroll(1, 8, 2026);
     expect(record.workingDays).toBeNull();
@@ -312,7 +313,7 @@ describe("PayrollService.generatePayroll", () => {
   it("throws a clear error if no salary structure is active for the period, instead of paying a wrong amount", async () => {
     const prisma = buildPrismaMock();
     const salaryStructures = { getActiveAsOf: jest.fn().mockResolvedValue(null) };
-    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any);
+    const service = new PayrollService(prisma as any, s3Mock as any, salaryStructures as any, pdfMock as any, notificationsMock as any);
 
     await expect(service.generatePayroll(1, 8, 2026)).rejects.toThrow();
   });
