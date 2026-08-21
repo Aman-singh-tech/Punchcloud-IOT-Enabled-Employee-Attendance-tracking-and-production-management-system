@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,8 +29,18 @@ export function ApplyLeavePage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
+
+  // This company gives no paid leave at all — every leave type pays the same (nothing,
+  // see the payroll rules), but pre-selecting "Unpaid" is the honest default rather than
+  // leaving the dropdown on a blank "Select..." that implies "Paid"/"Sick"/"Casual" might
+  // actually be paid. Employees can still pick a different type for record-keeping.
+  useEffect(() => {
+    const unpaid = leaveTypes?.find((lt) => lt.name.toLowerCase() === "unpaid");
+    if (unpaid) setValue("leaveTypeId", unpaid.leaveTypeId);
+  }, [leaveTypes, setValue]);
 
   async function onSubmit(values: FormValues) {
     try {
